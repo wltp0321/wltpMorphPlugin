@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+
 }
 
 group = 'world.wltp'
@@ -15,8 +16,13 @@ repositories {
 }
 
 dependencies {
+<<<<<<< HEAD
     compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
 
+=======
+    compileOnly 'org.bukkit:bukkit:1.21.7-R0.1-SNAPSHOT' // Replace with your Minecraft version
+    compileOnly 'org.spigotmc:spigot-api:1.21.7-R0.1-SNAPSHOT' // 원하는 버전에 맞게 수정
+>>>>>>> 2b1167548448567a34e5cd56951f81d6966f9e63
 }
 
 java {
