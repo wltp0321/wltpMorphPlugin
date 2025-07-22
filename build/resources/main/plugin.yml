@@ -1,10 +1,11 @@
-name: wltpMorphPlugin
-version: '1.0-SNAPSHOT'
+name: WLTPMorphPlugin
 main: world.wltp.wltpmorphplugin.Main
-api-version: '1.21'
+version: 1.0-SNAPSHOT
+api-version: 1.21
 commands:
   morph:
-    description: 엔티티나 블럭으로 변신합니다
-    usage: /<command> <타입>
+    description: Morph into an entity or block display
+    usage: /morph <ENTITY or BLOCK>
   unmorph:
-    description: 원래 모습으로 돌아옵니다
+    description: Revert morph
+    usage: /unmorph

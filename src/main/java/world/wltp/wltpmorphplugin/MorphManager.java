@@ -1,92 +1,105 @@
 package world.wltp.wltpmorphplugin;
 
-import org.bukkit.*;
-import org.bukkit.entity.*;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MorphManager {
+
     private final Main plugin;
-    private final Map<UUID, BukkitTask> tasks = new HashMap<>();
-    private final Map<UUID, Entity> morphedEntities = new HashMap<>();
+    private final Map<Player, ArmorStand> morphStands = new HashMap<>();
+    private final Map<Player, BlockDisplay> morphDisplays = new HashMap<>();
 
     public MorphManager(Main plugin) {
         this.plugin = plugin;
     }
 
-    public void morph(Player player, MorphType type) {
-        unmorph(player);
 
-        player.hidePlayer(plugin, player);
 
-        Location loc = player.getLocation();
-        Entity fake = null;
-
-        if (type.isBlock()) {
-            ArmorStand stand = loc.getWorld().spawn(loc, ArmorStand.class);
-            stand.setVisible(false);
-            stand.setGravity(false);
-            stand.setHelmet(new ItemStack(type.getBlockMaterial()));
-            stand.setMarker(true);
-            stand.setCustomName(player.getName());
-            stand.setCustomNameVisible(true);
-            fake = stand;
-        } else {
-            LivingEntity mob = (LivingEntity) loc.getWorld().spawnEntity(loc, type.entityType);
-            mob.setAI(false);
-            mob.setCustomName(player.getName());
-            mob.setCustomNameVisible(true);
-            mob.setCollidable(false);
-            mob.setSilent(true);
-            mob.setInvulnerable(true);
-            fake = mob;
+    public void morph(Player player, Material material) {
+        if (morphStands.containsKey(player)) {
+            player.sendMessage("이미 변신 중입니다.");
+            return;
+        }
+        if (!material.isBlock()) {
+            player.sendMessage("블럭만 변신 가능합니다.");
+            return;
         }
 
-        morphedEntities.put(player.getUniqueId(), fake);
+        Location loc = player.getLocation();
+        World world = loc.getWorld();
 
-        // 따라오는 동작 반복
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!player.isOnline()) {
-                unmorph(player);
-                return;
+        ArmorStand stand = (ArmorStand) world.spawnEntity(loc, EntityType.ARMOR_STAND);
+        stand.setVisible(false);
+        stand.setGravity(false);
+        stand.setMarker(true);
+        stand.setSmall(true);
+        stand.setInvulnerable(true);
+        stand.setCollidable(false);
+
+        BlockData blockData = material.createBlockData();
+        BlockDisplay display = (BlockDisplay) world.spawnEntity(loc, EntityType.BLOCK_DISPLAY);
+        display.setBlock(blockData);
+
+        // BlockDisplay 위치 조정
+        Transformation transform = new Transformation(
+                new Vector3f(-0.5f, -1.8f, -0.5f),
+                new AxisAngle4f(0f, 0f, 0f, 0f),
+                new Vector3f(1, 1, 1),
+                new AxisAngle4f(0f, 0f, 0f, 0f)
+        );
+        display.setTransformation(transform);
+        display.setRotation(0f, 0f);
+        display.setInterpolationDelay(0);
+        display.setInterpolationDuration(5);
+
+        stand.addPassenger(display);
+        player.addPassenger(stand);
+        player.setInvisible(true);
+
+        morphStands.put(player, stand);
+        morphDisplays.put(player, display);
+
+        plugin.getLogger().info("Morph 시작: " + player.getName());
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline() || !stand.isValid() || !display.isValid()) {
+                    player.sendMessage("변신이 해제됩니다.");
+                    unmorph(player);
+                    cancel();
+                    return;
+                }
+
+                Location playerLoc = player.getLocation();
+                stand.teleport(playerLoc);
             }
-
-            Entity morphEntity = morphedEntities.get(player.getUniqueId());
-            if (morphEntity == null || morphEntity.isDead()) return;
-
-            Location playerLoc = player.getLocation();
-            morphEntity.teleport(playerLoc);
-
-            if (morphEntity instanceof LivingEntity le) {
-                le.setRotation(playerLoc.getYaw(), playerLoc.getPitch());
-            }
-        }, 0L, 1L);
-
-        tasks.put(player.getUniqueId(), task);
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     public void unmorph(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        if (morphedEntities.containsKey(uuid)) {
-            Entity fake = morphedEntities.remove(uuid);
-            if (fake != null && !fake.isDead()) fake.remove();
+        if (morphDisplays.containsKey(player)) {
+            morphDisplays.get(player).remove();
+            morphDisplays.remove(player);
         }
-
-        BukkitTask task = tasks.remove(uuid);
-        if (task != null) task.cancel();
-
-        for (Player other : Bukkit.getOnlinePlayers()) {
-            other.showPlayer(plugin, player);
+        if (morphStands.containsKey(player)) {
+            morphStands.get(player).remove();
+            morphStands.remove(player);
         }
-    }
-
-    public void unmorphAll() {
-        for (UUID uuid : new HashSet<>(morphedEntities.keySet())) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) unmorph(player);
-        }
+        player.setInvisible(false);
+        player.sendMessage("변신이 해제되었습니다.");
     }
 }

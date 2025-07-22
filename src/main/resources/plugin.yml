@@ -1,10 +1,19 @@
-name: wltpMorphPlugin
-version: '${version}'
+name: WLTPMorphPlugin
 main: world.wltp.wltpmorphplugin.Main
-api-version: '1.21'
+version: 1.0-SNAPSHOT
+api-version: 1.21
 commands:
   morph:
-    description: 엔티티나 블럭으로 변신합니다
-    usage: /<command> <타입>
+    description: Morph into an block display
+    usage: /morph <BLOCK>
   unmorph:
-    description: 원래 모습으로 돌아옵니다
+    description: Revert morph
+    usage: /unmorph
+
+permissions:
+  morph.use:
+    description: Allows player to use the /morph command to transform into a block.
+    default: op
+  morph.unmorph:
+    description: Allows player to use the /unmorph command to revert transformation.
+    default: op
